@@ -1,5 +1,4 @@
 const fs = require('fs')
-const dayjs = require("dayjs")
 
 let raw_user_data;
 let formatted_used_data;
@@ -8,7 +7,7 @@ class Data_Processing{
   constructor() {}
 
   load_CSV(fileName){
-    raw_user_data = fs.readFileSync(fileName, "utf-8") 
+    raw_user_data = fs.readFileSync(fileName, "utf-8")
   }
 
   format_data(){
@@ -41,7 +40,7 @@ class Data_Processing{
         }
         last_name = fcolumnDet[-1];
        }
-       
+
        return{
          title: title,
          first_name: first_name,
@@ -55,16 +54,37 @@ class Data_Processing{
        formatted_used_data = JSON.stringify(format_data)
       //  console.log(formatted_used_data)
   }
-  
+
   clean_data(){
     //console.log(formatted_used_data);
     cleaned_user_data = JSON.parse(formatted_used_data)
-    // var data_collection_date = new Date()
-    // for(let i = 0; i < cleaned_user_data.length; i++){
-    //   var dbirth_clean = new Date(cleaned_user_data[i].date_of_birth);
-    //   dbirth_clean = dbirth_clean.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit'})
-    //   cleaned_user_data[i].date_of_birth = dbirth_clean;
-    // }
+    let data_collection_date = new Date("02/26/2024");
+
+    for(let i = 0; i < cleaned_user_data.length; i++){
+      let dbirth_clean = new Date(cleaned_user_data[i].date_of_birth);
+      let db_parts = cleaned_user_data[i].date_of_birth.split("/");
+
+      let dbirth_format = dbirth_clean.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit'})
+      if(dbirth_format != 'Invalid Date'){
+        cleaned_user_data[i].date_of_birth = dbirth_format;
+      }
+      else{
+
+        let day = db_parts[0];
+        let month = db_parts[1];
+        let year = db_parts[2];
+        if(year.length < 4){
+          let date = new Date(year, 0);
+          year = date.getFullYear();
+        }
+        cleaned_user_data[i].date_of_birth = `${day}/${month}/${year}`;
+      }
+      let dbGetTime = new Date(`${db_parts[1]}/${db_parts[0]}/${db_parts[2]}`);
+
+      let age_diff = data_collection_date.getTime() - dbGetTime.getTime();
+      let age = (age_diff / 31536000000).toFixed(0);
+      cleaned_user_data[i].age = age;
+    }
     console.log(cleaned_user_data)
   }
   }
