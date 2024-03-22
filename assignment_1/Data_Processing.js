@@ -1,6 +1,5 @@
 const fs = require('fs')
 
-// let cleaned_user_data;
 let data_collection_date = new Date("02/26/2024");
 
 class Data_Processing{
@@ -16,6 +15,7 @@ class Data_Processing{
     this.raw_user_data = fs.readFileSync(fileName, "utf-8")
   }
 
+// Formatting date of birth in dd/mm/yyyy format. If yyyy in yy adding century
   format_date_birth(db){
     let db_parts = db.split(/[\/\s.]+/);
 
@@ -42,6 +42,7 @@ class Data_Processing{
       return dbirth_format;
   }
 
+// Transfer word age to integer or return previous age as integer
   format_age(word_check){
     var ageInt = 0;
     let letterRegex = /[a-zA-Z]/;
@@ -93,6 +94,7 @@ class Data_Processing{
   return ageInt;
   }
 
+// Formatting data getting title, first_name, middle name, surname, db, age
   format_data(){
     const staticTitle = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Dr."]
      var lines = this.raw_user_data.trim().split('\n');
@@ -145,14 +147,14 @@ class Data_Processing{
        this.formatted_user_data = format_data;
   }
 
+// Cleaning data from duplicates, fill missing values(first_name, surname, email). Adding id count to email
   clean_data(){
-
+    let jsonObject = this.formatted_user_data.map(JSON.stringify);
+    let uniqueSet = new Set(jsonObject);
+    this.cleaned_user_data = Array.from(uniqueSet).map(JSON.parse);
+    this.cleaned_user_data = this.filterEmails(this.cleaned_user_data)
     var splitted_email;
-    this.cleaned_user_data = this.formatted_user_data
 
-    //go through dataset line by line
-    //check for duplicates
-    //if duplicate is identified, remove that row
 
     for(let i = 0; i < this.cleaned_user_data.length; i++){
 
@@ -162,6 +164,28 @@ class Data_Processing{
         splitted_email = (this.cleaned_user_data[i].email).split("@");
         this.cleaned_user_data[i].first_name = splitted_email[0].split(".")[0];
         this.cleaned_user_data[i].surname = splitted_email[0].split(".")[1];
+      }
+
+      // Formar email in clean form
+      this.cleaned_user_data[i].email = `${this.cleaned_user_data[i].first_name}.${this.cleaned_user_data[i].surname}@example.com`
+    }
+
+    // Dictionary of email frequencies
+    let email_frequency = this.emailFrequency(this.cleaned_user_data)
+
+      for(let i = 0; i < this.cleaned_user_data.length; i++){
+      // Identify email by ID if repeated
+      const count = this.email_id[this.cleaned_user_data[i].email] || 1;
+      if (count >= 2) {
+          this.cleaned_user_data[i].email = `${this.cleaned_user_data[i].first_name}.${this.cleaned_user_data[i].surname}${count}@example.com`;
+        }
+      this.email_id[this.cleaned_user_data[i].email] = count + 1;
+
+// if frequency of email > 1 add 1 as identificator, because repetition above doesn't mark first occurrence
+      const emailNoId = this.cleaned_user_data[i].email;
+      const frequency = email_frequency[emailNoId] || 0;
+      if(frequency > 1){
+        this.cleaned_user_data[i].email = `${this.cleaned_user_data[i].first_name}.${this.cleaned_user_data[i].surname}1@example.com`;
       }
 
       //Clean date of birth and age
@@ -183,39 +207,10 @@ class Data_Processing{
       new_age = Math.abs(data_collection_date - dbirth_clean);
       new_age = Math.floor(new_age / (1000 * 60 * 60 * 24 * 365.25));
       this.cleaned_user_data[i].age = new_age;
-
-      // Formar email in clean form
-      this.cleaned_user_data[i].email = `${this.cleaned_user_data[i].first_name}.${this.cleaned_user_data[i].surname}@example.com`
-    }
-
-    // let jsonObject = this.cleaned_user_data.map(JSON.stringify);
-    // let uniqueSet = new Set(jsonObject);
-    // this.cleaned_user_data = Array.from(uniqueSet).map(JSON.parse);
-    // this.cleaned_user_data = this.filterEmails(this.cleaned_user_data)
-
-    this.cleaned_user_data = this.duplicatedEntities(this.cleaned_user_data)
-
-    let email_frequency = this.emailFrequency(this.cleaned_user_data)
-
-    for(let i = 0; i < this.cleaned_user_data.length; i++){
-      // Identify email by ID if repeated
-      const count = this.email_id[this.cleaned_user_data[i].email] || 1;
-      if (count >= 2) {
-          this.cleaned_user_data[i].email = `${this.cleaned_user_data[i].first_name}.${this.cleaned_user_data[i].surname}${count}@example.com`;
-        }
-      this.email_id[this.cleaned_user_data[i].email] = count + 1;
-
-      const emailNoId = this.cleaned_user_data[i].email;
-      const frequency = email_frequency[emailNoId] || 0;
-      if(frequency > 1){
-        this.cleaned_user_data[i].email = `${this.cleaned_user_data[i].first_name}.${this.cleaned_user_data[i].surname}1@example.com`;
-      }
-
-
-      // console.log(this.cleaned_user_data)
     }
   }
 
+// Finding common surnames
   most_common_surname(){
     var count_surname = {}
     var most_surname_count = 0
@@ -240,6 +235,7 @@ class Data_Processing{
     return common_surname;
   }
 
+// Calculating average age of people
   average_age(){
     var sum = 0;
     for(let i = 0; i < this.cleaned_user_data.length; i++){
@@ -249,12 +245,14 @@ class Data_Processing{
     return (sum / this.cleaned_user_data.length).toPrecision(3);
   }
 
+// Getting data about the youngest Doctor
   youngest_dr(){
     var dr_title = this.cleaned_user_data.filter(dr => dr.title === 'Dr')
     .reduce((min, curr) => min.age < curr.age ? min : curr);
     return dr_title;
   }
 
+// Getting most common month in data by splitting dd/mm/yyyy. Counting maximum common mm frequency
   most_common_month(){
     var count_month = {}
     var most_month_count = 0
@@ -277,6 +275,7 @@ class Data_Processing{
    return parseInt(common_month);
   }
 
+// Calculating percentage of each title including left space
   percentage_titles(){
     // Mr, Mrs, Miss, Ms, Dr, or left blank.
     let percents = []
@@ -312,24 +311,28 @@ class Data_Processing{
     return percents;
   }
 
+// Calculating the percentage of value differences in formatted_user_data and cleaned_user_data
   percentage_altered() {
-    let totalKeys = Object.keys(this.cleaned_user_data[0]);
-    let total = this.formatted_user_data.length;
-    let altered = 0;
+  let total = this.formatted_user_data.length * Object.keys(this.formatted_user_data[0]).length;
+  let totalKeys = Object.keys(this.formatted_user_data[0])
+  let altered = 0;
 
-    this.formatted_user_data.forEach((_, index) => {
-        if (JSON.stringify(this.formatted_user_data[index]) !== JSON.stringify(this.cleaned_user_data[index])) {
-          altered++;
+//   Calculating difference of values in cleaned_user_data and first unique values from formatted_user_data
+  for (let i = 0; i < this.cleaned_user_data.length; i++) {
+    totalKeys.forEach(key => {
+      if (this.formatted_user_data[i][key] !== this.cleaned_user_data[i][key]) {
+        altered++;
       }
     });
+  }
 
-    console.log("Altered entries:", altered);
-    console.log("Total entries:", total);
-
-    let percentage = (altered / total) * 100;
-    return percentage.toPrecision(3);
-}
-
+//   Adding the removed duplicate length to get whole altered data
+  altered = altered + (this.formatted_user_data.length - this.cleaned_user_data.length) * totalKeys.length
+  let percentage = (altered / total) * 100;
+  console.log(altered)
+  console.log(total)
+  console.log(percentage.toPrecision(3));
+  }
 
   getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key] === value);
@@ -348,20 +351,8 @@ class Data_Processing{
     return emailFrequency;
   }
 
-  duplicatedEntities(jsArray){
-    const unique = {};
-    const uniqueArray = []
-    jsArray.forEach(entity => {
-      const key = JSON.stringify(entity);
-      if(!unique[key]){
-        unique[key] = true;
-        uniqueArray.push(entity)
-      }
-    });
-    return uniqueArray;
   }
 
-  }
 
 const processor = new Data_Processing();
 processor.load_CSV('Raw_User_Data');
