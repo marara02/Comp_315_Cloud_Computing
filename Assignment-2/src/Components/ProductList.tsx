@@ -1,3 +1,5 @@
+import useLocalStorageState from 'use-local-storage-state'
+
 type ContentAreaProps = {
 	itemList: Product[]
 }
@@ -11,6 +13,23 @@ type Product = {
 	rating: number
 	image_link: string
 }
+
+export interface CartProps {
+	[productId: string]: Product
+}
+
+const [cart, setCart] = useLocalStorageState<CartProps>('cart', {})
+const addToCart = (product: Product):void => {
+    product.quantity = 1
+
+    setCart((prevCart) => ({
+      ...prevCart,
+      [product.id]: product,
+    }))
+  }
+
+  const isInCart = (productId: number):boolean => Object.keys(cart || {}).includes(productId.toString())
+
 
 export const ProductList = (props: ContentAreaProps) => {
 	return (

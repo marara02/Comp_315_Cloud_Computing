@@ -14,11 +14,17 @@ type Product = {
 }
 
 function App() {
+  
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [searchedProducts, setSearchedProducts] = useState<Product[]>(itemList);
+  const [searchedResultNumber, setSearchedResultNumber] = useState<string>('');
+  const [selectTerm, setSelectTerm] = useState<string>('AtoZ');
+  const [checkInbox, setCheckInbox] = useState<boolean>(false);
+  
+
 
   // ===== Hooks =====
-  useEffect(() => updateSearchedProducts(), [searchTerm]);
+  useEffect(() => updateSearchedProducts(), [searchTerm, selectTerm, checkInbox]);
 
   // ===== Basket management =====
   function showBasket(){
@@ -37,11 +43,51 @@ function App() {
 
   // ===== Search =====
   function updateSearchedProducts(){
-    let holderList: Product[] = itemList;
-
-    setSearchedProducts(holderList.filter((product: Product) =>
+    let holderList: Product[] = itemList.filter((product: Product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ));
+    );
+
+    
+    if(selectTerm == 'AtoZ'){
+      holderList.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    }
+    if(selectTerm == 'ZtoA'){
+      holderList.sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
+    }
+    if(selectTerm == '£LtoH'){
+      holderList.sort((a, b) => (a.price < b.price ? -1 : a.price > b.price ? 1 : 0));
+    }
+    if(selectTerm == '£HtoL'){
+      holderList.sort((a, b) => (a.price < b.price ? 1 : a.price > b.price ? -1 : 0));
+    }
+    if(selectTerm == '*LtoH'){
+      holderList.sort((a, b) => (a.rating < b.rating ? -1 : a.rating > b.rating ? 1 : 0));
+    }
+    if(selectTerm == '*HtoL'){
+      holderList.sort((a, b) => (a.rating < b.rating ? 1 : a.rating > b.rating ? -1 : 0));
+    }
+
+    if(checkInbox == true){
+      holderList = holderList.filter(product => product.quantity > 0);
+    }
+
+    setSearchedProducts(holderList);
+   
+    if(searchTerm == ''){
+      setSearchedResultNumber(`${holderList.length}Products`);
+    }
+    else if(searchTerm == '' && holderList.length == 1){
+      setSearchedResultNumber(`1Product`);
+    }
+    else if(holderList.length == 0 || holderList == null){
+      setSearchedResultNumber('Nosearchresults found');
+    }
+    else if(holderList.length == 1){
+      setSearchedResultNumber(`1Result`);
+    }
+    else{
+      setSearchedResultNumber(`${holderList.length}Results`);
+    }
   }
 
  
@@ -65,7 +111,7 @@ function App() {
       <div id="search-bar">
         <input type="text" placeholder="Search..." onChange={changeEventObject => setSearchTerm(changeEventObject.target.value)}></input>
         <div id="control-area">
-          <select>
+          <select onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectTerm(e.target.value)}>
             <option value="AtoZ">By name (A - Z)</option>
             <option value="ZtoA">By name (Z - A)</option>
             <option value="£LtoH">By price (low - high)</option>
@@ -73,11 +119,11 @@ function App() {
             <option value="*LtoH">By rating (low - high)</option>
             <option value="*HtoL">By rating (high - low)</option>
           </select>
-          <input id="inStock" type="checkbox"></input>
+          <input id="inStock" type="checkbox" onChange={changeEventObject => setCheckInbox(changeEventObject.target.checked)}></input>
           <label htmlFor="inStock">In stock</label>
         </div>
       </div>
-      <p id="results-indicator"></p>
+      <p id="results-indicator">{searchedResultNumber}</p>
       <ProductList itemList={searchedProducts}/>
     </div>
   )
